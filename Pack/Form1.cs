@@ -333,6 +333,9 @@ namespace Pack
             garc.file_length = br.ReadUInt32();
             garc.lastsize = br.ReadUInt32();
 
+            // dummy read to offset header size gap
+            br.ReadChars(Convert.ToInt32(garc.header_size) - 0x1c);
+
             // OTAF 
             garc.otaf.id = br.ReadChars(4);
             garc.otaf.section_size = br.ReadUInt32();
