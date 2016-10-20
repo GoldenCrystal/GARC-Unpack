@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -20,6 +20,7 @@ namespace Pack
         }
         private void Form_DragDrop(object sender, DragEventArgs e)
         {
+
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
             string path = files[0]; // open first D&D
 
@@ -31,7 +32,7 @@ namespace Pack
                 if (CHK_AutoExtract.Checked)
                     B_Go_Click(sender, (EventArgs)e);
             }
-
+           
         }
         public Form1()
         {
@@ -210,13 +211,18 @@ namespace Pack
 
             // Write GARC header
             gw.Write((uint)0x47415243); // Write "CRAG"         0x0
-            gw.Write((uint)0x1C);       // Header Length        0x4
+            gw.Write((uint)0x24);       // Header Length        0x4
             gw.Write((ushort)0xFEFF);   // FEFF BOM             0x8
-            gw.Write((ushort)0x0400);   //                      0xA
+            gw.Write((ushort)0x0600);   //                      0xA
             gw.Write((uint)0x4);        //                      0xC
             gw.Write((uint)0);          // Data Offset          0x10
             gw.Write((uint)0);          // File Length          0x14
             gw.Write((uint)0);          // FATB chunk last word 0x18-0x1B
+            
+            gw.Write((uint)0);          // FATB chunk lsa word repeated?
+            
+            gw.Write((uint)0x4);        // More 4s I guess
+
 
             // Write OTAF
             gw.Write((uint)0x4641544F); // OTAF                     0x1C
@@ -235,6 +241,7 @@ namespace Pack
 
             uint offset = 0;
             uint largest = 0;
+            Console.WriteLine("Hello!");
             for (int i = 0; i < filepaths.Length; i++)
             {
                 FileInfo fi = new FileInfo(filepaths[i]);
@@ -242,7 +249,7 @@ namespace Pack
                 {
                     gw.Write((uint)1);          // garc.btaf.entries[i].bits = br.ReadUInt32();
                     gw.Write((uint)offset);     // Start/Begin Offset
-                    offset += (uint)((4 - fi.Length % 4) + fi.Length);
+                    offset += (uint)(((4 - fi.Length % 4) + fi.Length) - 4);
                     gw.Write((uint)offset);     // End/Stop Offset
                     gw.Write((uint)fi.Length);  // Length/Size
 
@@ -267,7 +274,8 @@ namespace Pack
             gw.Write(dataOffset);
             gw.Write(garcLength);
             gw.Write(largestFile);
-
+            gw.Write(largestFile);
+            
             newGARC.Seek(0, SeekOrigin.End);
 
             // Write in the data
@@ -333,8 +341,9 @@ namespace Pack
             garc.file_length = br.ReadUInt32();
             garc.lastsize = br.ReadUInt32();
 
-            // dummy read to offset header size gap
-            br.ReadChars(Convert.ToInt32(garc.header_size) - 0x1c);
+            // fix to header from goteniai
+            br.ReadUInt32();
+            br.ReadUInt32();
 
             // OTAF 
             garc.otaf.id = br.ReadChars(4);
@@ -343,6 +352,7 @@ namespace Pack
             garc.otaf.padding = br.ReadUInt16();
 
             garc.otaf.entries = new OTAF_Entry[garc.otaf.nFiles];
+
             // not really needed; plus it's wrong
             for (int i = 0; i < garc.otaf.nFiles; i++)
             {
